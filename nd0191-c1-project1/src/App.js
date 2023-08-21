@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Route } from 'react-router-dom';
 import { debounce } from 'throttle-debounce';
 import * as BooksAPI from './BooksAPI';
@@ -6,70 +6,79 @@ import './App.css';
 import ListBooks from './ListBooks';
 import SearchBooks from './SearchBooks';
 
-const bookAction= [
+const bookAction = [
   { key: 'currentlyReading', name: 'Currently Reading' },
   { key: 'wantToRead', name: 'Want to Read' },
   { key: 'read', name: 'Read' }
 ];
-class MyApp extends Component {
-  state = {  myBooks: [], searchBooks: []};
-  componentDidMount = () => {
+
+function MyApp() {
+  const [books, setBooks] = useState([]);
+  const [searchBooks, setSearchBooks] = useState([]);
+
+  useEffect(() => {
     BooksAPI.getAll()
       .then(books => {
-        this.setState({ myBooks: books });
-      })
-  };
-  moveBook = (book, shelf) => {
-    BooksAPI.update(book, shelf);
-    if (shelf === 'none') {
-      this.setState(bookState => ({
-        myBooks: bookState.myBooks.filter(b => b.id !== book.id)
-      }));
-    } else {
-      book.shelf = shelf;
-      this.setState(bookState => ({
-        myBooks: bookState.myBooks.filter(b => b.id !== book.id).concat(book)
-      }));
-    }
-  };
-  searchForBooks = debounce(200, false, query => {
+        setBooks(books)
+      }); 
+    return () => true;
+  }, [])
+
+  const moveBook = (selectedBook, shelf) => {
+    BooksAPI.update(selectedBook, shelf).then((res) => {
+      selectedBook.shelf = shelf;
+      const newBooks = books.filter((b) => {
+        return b.id !== selectedBook.id;
+      }).concat([selectedBook]);
+      setBooks(newBooks);
+    });
+  }
+
+  const searchForBooks = debounce(200, false, query => {
     if (query.length > 0) {
-      BooksAPI.search(query).then(books => {
-        if (books.error) {
-          this.setState({ searchBooks: [] });
+      BooksAPI.search(query).then(results => {
+        if (results.error) {
+          setSearchBooks({ searchBooks: [] });
         } else {
-          this.setState({ searchBooks: books });
+          let foundBooks = results.map((foundBook) => {
+            let bookExist = books.find(book => book.id === foundBook.id);
+            if (bookExist) {
+              return bookExist;
+            }
+            else {
+              return foundBook;
+            }
+          });
+          return setSearchBooks(foundBooks);
         }
       });
     } else {
-      this.setState({ searchBooks: [] });
+      setSearchBooks ([]);
     }
   });
-  resetSearch = () => {
-    this.setState({ searchBooks: [] });
+
+  const resetSearch = () => {
+    setSearchBooks([]);
   };
 
-  render() {
-    const { myBooks, searchBooks} = this.state;
-    return (
-      <div className="app">
-        <Route
-          exact
-          path="/"
-          render={() => (
-            <ListBooks bookAction={bookAction} books={myBooks} onMove={this.moveBook}/>
-          )}
-        />
-        <Route
-          path="/search"
-          render={() => (
-            <SearchBooks searchBooks={searchBooks} myBooks={myBooks} onSearch={this.searchForBooks} onMove={this.moveBook}
-              onResetSearch={this.resetSearch}/>
-          )}
-        />
-      </div>
-    );
-  }
+  return (
+    <div className="app">
+      <Route
+        exact
+        path="/"
+        render={() => (
+          <ListBooks bookAction={bookAction} books={books} onMove={moveBook}/>
+        )}
+      />
+      <Route
+        path="/search"
+        render={() => (
+          <SearchBooks searchBooks={searchBooks} myBooks={books} onSearch={searchForBooks} onMove={moveBook}
+            onResetSearch={resetSearch}/>
+        )}
+      />
+    </div>
+  );
 }
 
 export default MyApp;

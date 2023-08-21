@@ -1,30 +1,8 @@
-import React, { Component } from 'react';
+import SearchResults from './SearchResults';
 import { Link } from 'react-router-dom';
-import Book from './Book';
+import SearchBooksInput from './SearchBooksInput';
 
-class SearchBooks extends Component {
-  state = { value: ''};
-
-  handleSearch = event => {
-    const val = event.target.value;
-    this.setState({ value: val }, () => {
-      this.props.onSearch(val);
-    });
-  };
-
-  render() {
-    const { searchBooks, myBooks, onResetSearch, onMove} = this.props; 
-
-    const updatedBooks = searchBooks.map(book => {
-      myBooks.map(b => {
-        if (b.id === book.id) {
-          book.shelf = b.shelf;
-        }
-        return b;
-      });
-      return book;
-    });
-
+export default function SearchBooks({searchBooks, myBooks, onSearch, onResetSearch, onMove}) {
     return (
       <div className="search-books">
         <div className="search-books-bar">
@@ -33,21 +11,13 @@ class SearchBooks extends Component {
               Close
             </button>
           </Link>
-          <div className="search-books-input-wrapper">
-            <input type="text" value={this.state.value} placeholder="Search by title, author, or ISBN"
-              onChange={this.handleSearch} autoFocus/>
-          </div>
+          <SearchBooksInput onSearch={onSearch} />
         </div>
-        <div className="search-books-results">
-          <ol className="books-grid">
-            {updatedBooks.map(book => (
-                <Book key={book.id} book={book} shelf={book.shelf ? book.shelf : 'none'} onMove={onMove}/>
-            ))}
-          </ol>
-        </div>
+        <SearchResults
+          searchBooks={searchBooks}
+          myBooks={myBooks}
+          onMove={onMove}
+        />
       </div>
     );
-  }
 }
-
-export default SearchBooks;
